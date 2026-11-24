@@ -42,6 +42,8 @@ A ferramenta não substitui a análise técnica do profissional, mas oferece uma
 - **Google Gemini API:** serviço de Inteligência Artificial utilizado para analisar e classificar os chamados.
 - **Google Gen AI SDK (`google-genai`):** biblioteca responsável pela comunicação entre Python e Gemini.
 - **python-dotenv:** biblioteca utilizada para carregar variáveis de ambiente do arquivo `.env`.
+- **httpx2:** biblioteca utilizada pelo ambiente de comunicação HTTP e no tratamento de exceções de conexão e timeout.
+- **unittest:** framework nativo do Python utilizado nos testes automatizados.
 - **Git e GitHub:** ferramentas utilizadas para controle de versão e armazenamento do código-fonte.
 
 ### 5.1. Modelo de linguagem
@@ -51,7 +53,9 @@ A ferramenta não substitui a análise técnica do profissional, mas oferece uma
 
 A aplicação utiliza a API do Google Gemini para processar as descrições dos chamados.
 
-A chave de acesso é armazenada em uma variável de ambiente (`GEMINI_API_KEY`), evitando sua exposição direta no código-fonte.
+O modelo pode ser configurado por variável de ambiente, permitindo sua alteração sem modificar o código-fonte.
+
+A chave de acesso é armazenada na variável `GEMINI_API_KEY`, evitando sua exposição direta no código-fonte.
 
 ## 6. Estrutura do projeto
 
@@ -59,32 +63,55 @@ A chave de acesso é armazenada em uma variável de ambiente (`GEMINI_API_KEY`),
 P0/
 ├── services/
 │   └── gemini_service.py
+├── tests/
+│   ├── test_config.py
+│   ├── test_gemini_service.py
+│   └── test_prompts.py
 ├── templates/
 │   ├── index.html
 │   └── resultado.html
 ├── cli.py
+├── config.py
+├── prompts.py
 ├── app.py
 ├── requirements.txt
+├── .env.example
+├── .gitignore
+├── .dockerignore
+├── Dockerfile
 ├── teste_gemini.py
 ├── teste_servico.py
-├── Dockerfile
-├── .dockerignore
-├── .gitignore
 └── README.md
 ```
 
 ### 6.1. Organização dos arquivos
 
-- `cli.py`: recebe a descrição do chamado pelo terminal e apresenta a classificação.
-- `services/gemini_service.py`: centraliza a comunicação com a API do Gemini.
+- `cli.py`: recebe a descrição do chamado pelo terminal, solicita a classificação e apresenta o resultado.
+- `config.py`: centraliza a leitura e validação das configurações e credenciais.
+- `prompts.py`: prepara as instruções enviadas ao modelo de linguagem.
+- `services/gemini_service.py`: centraliza a comunicação com a API do Gemini e o tratamento de falhas.
+- `tests/test_config.py`: testa a leitura e validação das configurações.
+- `tests/test_gemini_service.py`: testa o serviço Gemini e seus diferentes cenários de resposta e falha.
+- `tests/test_prompts.py`: testa a preparação e validação dos prompts.
+- `.env.example`: apresenta o modelo de configuração das variáveis de ambiente.
+- `.env`: armazena as configurações privadas da aplicação e não deve ser publicado.
 - `requirements.txt`: lista as dependências Python do projeto.
 - `.gitignore`: impede que arquivos privados e temporários sejam enviados ao GitHub.
-- `teste_gemini.py`: script utilizado nos primeiros testes de comunicação com o Gemini.
-- `teste_servico.py`: teste da integração por meio do serviço Python.
 - `app.py` e `templates/`: componentes de uma versão inicial com interface web.
 - `Dockerfile` e `.dockerignore`: arquivos utilizados na configuração inicial de execução em contêiner.
+- `teste_gemini.py` e `teste_servico.py`: scripts auxiliares utilizados durante os primeiros testes de integração.
 
-O fluxo principal do nível básico utiliza a interface de terminal implementada em `cli.py`.
+### 6.2. Organização da aplicação
+
+A partir da etapa intermediária, o projeto passou a utilizar uma estrutura modular, separando responsabilidades:
+
+1. **Entrada:** recebimento e validação da descrição do chamado.
+2. **Configuração:** leitura das credenciais e do modelo utilizado.
+3. **Preparação do prompt:** organização das instruções enviadas à LLM.
+4. **Comunicação:** envio da solicitação ao Google Gemini.
+5. **Tratamento da resposta:** validação do retorno e apresentação da classificação.
+
+Essa organização facilita a manutenção, os testes e a evolução da aplicação.
 
 ## 7. Instalação e configuração
 
@@ -127,29 +154,44 @@ Ative o ambiente virtual no Windows PowerShell:
 pip install -r requirements.txt
 ```
 
-### 7.5. Configurar a chave da API
+### 7.5. Configurar as variáveis de ambiente
 
-Crie um arquivo chamado `.env` na raiz do projeto e adicione:
+O projeto disponibiliza o arquivo `.env.example` como modelo de configuração.
+
+Crie uma cópia desse arquivo com o nome `.env`:
+
+No Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+O conteúdo esperado é:
 
 ```env
 GEMINI_API_KEY=sua_chave_aqui
+GEMINI_MODEL=gemini-3.5-flash-lite
 ```
 
 Substitua `sua_chave_aqui` pela chave obtida no Google AI Studio.
 
-**Importante:** não publique o arquivo `.env` nem compartilhe sua chave de API. O arquivo já está incluído no `.gitignore`.
+A variável `GEMINI_MODEL` permite definir o modelo utilizado pela aplicação.
+
+**Importante:** não publique o arquivo `.env` nem compartilhe sua chave de API. O arquivo está incluído no `.gitignore`.
 
 ### 7.6. Executar a aplicação
 
-Com o ambiente virtual ativado e a chave configurada, execute:
+Com o ambiente virtual ativado e as variáveis configuradas, execute:
 
 ```bash
 python cli.py
 ```
 
-## 8. Exemplo de utilização
+O programa solicitará a descrição do chamado.
 
-Após executar `python cli.py`, o programa solicita que o usuário descreva o problema de suporte.
+Para finalizar a entrada no Windows, pressione `Ctrl + Z` e depois `Enter`.
+
+## 8. Exemplo de utilização
 
 ### 8.1. Entrada
 
@@ -159,8 +201,6 @@ Todos os usuários do setor estão sem acesso.
 O problema começou hoje pela manhã.
 A equipe não consegue realizar as operações.
 ```
-
-Para finalizar a descrição no Windows, pressione `Ctrl + Z` e depois `Enter`.
 
 ### 8.2. Resultado esperado
 
@@ -180,26 +220,92 @@ A prioridade é crítica porque todos os usuários do setor
 estão sem acesso e as operações estão comprometidas.
 ```
 
-*Observação: como a classificação é gerada por um modelo de linguagem, o texto da resposta pode variar entre execuções.*
+*Observação: como a classificação é gerada por um modelo de linguagem, o texto e a classificação podem variar entre execuções.*
 
-## 9. Testes realizados
+## 9. Testes automatizados
 
-Durante o desenvolvimento do projeto, foram realizados os seguintes testes:
+A partir da etapa intermediária, foram implementados testes automatizados utilizando o módulo `unittest`, nativo do Python.
 
-| Teste | Resultado |
-|---|---|
-| Comunicação com a API do Google Gemini | Aprovado |
-| Carregamento da chave por variável de ambiente | Aprovado |
-| Classificação de chamado com descrição em uma linha | Aprovado |
-| Classificação de chamado com descrição em múltiplas linhas | Aprovado |
-| Tratamento de entrada vazia | Aprovado |
-| Retorno estruturado com categoria, prioridade, sistema, resumo e justificativa | Aprovado |
+Os testes verificam o comportamento das principais partes da aplicação sem depender de chamadas reais à API para simular os cenários de sucesso e falha.
 
-Os testes foram realizados localmente, utilizando o ambiente virtual Python e a API do Google Gemini.
+### 9.1. Executar os testes
 
-## 10. Limitações conhecidas
+Com o ambiente virtual ativado, execute:
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+### 9.2. Cenários testados
+
+| Arquivo | Cenário | Resultado |
+|---|---|---|
+| `test_config.py` | Recuperação de chave configurada | Aprovado |
+| `test_config.py` | Rejeição de chave ausente | Aprovado |
+| `test_config.py` | Recuperação do modelo padrão | Aprovado |
+| `test_config.py` | Recuperação de modelo configurado | Aprovado |
+| `test_gemini_service.py` | Resposta bem-sucedida | Aprovado |
+| `test_gemini_service.py` | Rejeição de texto vazio | Aprovado |
+| `test_gemini_service.py` | Rejeição de resposta vazia | Aprovado |
+| `test_gemini_service.py` | Tratamento de chave inválida (HTTP 401) | Aprovado |
+| `test_gemini_service.py` | Tratamento de serviço indisponível (HTTP 503) | Aprovado |
+| `test_gemini_service.py` | Tratamento de timeout | Aprovado |
+| `test_gemini_service.py` | Tratamento de falha de conexão | Aprovado |
+| `test_prompts.py` | Preparação de prompt válido | Aprovado |
+| `test_prompts.py` | Rejeição de chamado com espaços | Aprovado |
+| `test_prompts.py` | Rejeição de chamado vazio | Aprovado |
+
+**Resultado da execução: 14 testes aprovados.**
+
+Os cenários de falha da API são simulados por meio de mocks, evitando chamadas desnecessárias ao serviço externo.
+
+### 9.3. Teste de integração
+
+Além dos testes automatizados, foi realizada uma execução manual da aplicação pelo terminal, utilizando a API real do Google Gemini.
+
+O teste confirmou:
+
+- Recebimento de descrições com múltiplas linhas.
+- Comunicação com o modelo de linguagem.
+- Retorno de classificação estruturada.
+- Identificação de categoria, prioridade, sistema, resumo e justificativa.
+
+## 10. Tratamento de erros
+
+A aplicação possui mecanismos para identificar e tratar situações que podem impedir a classificação de um chamado.
+
+Entre os cenários contemplados estão:
+
+- Ausência da chave de API.
+- Chave de API inválida ou sem autorização.
+- Modelo configurado não encontrado.
+- Limite de solicitações atingido.
+- Serviço Gemini temporariamente indisponível.
+- Falha de conexão com a internet.
+- Tempo limite de comunicação excedido.
+- Entrada vazia ou resposta inválida.
+
+As falhas conhecidas são convertidas em mensagens compreensíveis para o usuário, evitando a exposição desnecessária de detalhes técnicos.
+
+## 11. Limitações conhecidas
 
 - A aplicação depende de conexão com a internet e disponibilidade da API do Google Gemini.
 - O uso da API está sujeito aos limites e às condições estabelecidas pelo provedor.
 - A classificação é uma recomendação gerada por Inteligência Artificial e deve ser validada por um profissional de suporte.
 - A resposta pode variar conforme a descrição fornecida e a geração do modelo.
+- A aplicação ainda não possui integração com ferramentas de gerenciamento de chamados ou sistemas corporativos.
+
+## 12. Evolução do projeto
+
+O projeto foi desenvolvido de forma incremental, contemplando os seguintes níveis:
+
+- **Básico:** criação de uma aplicação Python executada pelo terminal, integrada ao Google Gemini para classificação de chamados.
+- **Intermediário:** modularização do código, configuração por variáveis de ambiente, tratamento de falhas e implementação de testes automatizados.
+- **Avançado:** evolução da aplicação com recursos adicionais de configuração, segurança, qualidade e validação.
+
+O repositório mantém o histórico de desenvolvimento por meio do Git, permitindo identificar a evolução de cada etapa.
+
+---
+
+**Repositório GitHub:**
+https://github.com/anderson-ribeiro84/classificador-chamados

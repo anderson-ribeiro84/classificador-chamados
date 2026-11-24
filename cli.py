@@ -1,5 +1,6 @@
 
 from services.gemini_service import consultar_gemini
+from prompts import preparar_prompt
 
 
 def main():
@@ -25,44 +26,24 @@ def main():
         print("\nNenhuma descrição foi informada.")
         return
 
-    prompt = f"""
-Você é um assistente especializado em classificação de chamados de suporte de TI.
-
-Analise o chamado abaixo e classifique-o.
-
-CHAMADO:
-{chamado}
-
-Apresente o resultado neste formato:
-
-Categoria:
-Prioridade:
-Sistema:
-Resumo:
-Justificativa:
-
-Regras:
-- Categoria: Software, Hardware, Acesso/Permissão,
-  Rede/Conectividade, Dados/Relatórios ou Outro.
-- Prioridade: Crítica, Alta, Média ou Baixa.
-- Sistema: informe o sistema mencionado no chamado.
-  Se não houver identificação, escreva Não identificado.
-- Não invente informações que não estejam no chamado.
-- Considere o impacto descrito para definir a prioridade.
-- Responda em português brasileiro.
-"""
-
     print("\nAnalisando chamado com inteligência artificial...")
 
     try:
+        prompt = preparar_prompt(chamado)
         resultado = consultar_gemini(prompt)
 
         print("\n========== RESULTADO DA CLASSIFICAÇÃO ==========\n")
         print(resultado)
         print("\n===============================================\n")
 
-    except Exception as erro:
+    except (ValueError, RuntimeError) as erro:
         print(f"\nNão foi possível classificar o chamado: {erro}")
+
+    except Exception:
+        print(
+            "\nOcorreu um erro inesperado durante a classificação. "
+            "Tente novamente ou entre em contato com o suporte."
+        )
 
 
 if __name__ == "__main__":
