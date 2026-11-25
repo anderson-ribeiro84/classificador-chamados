@@ -1,10 +1,14 @@
-
 import httpx2
 
 from google import genai
 from google.genai import errors
 
-from config import obter_api_key, obter_modelo
+from config import (
+    obter_api_key,
+    obter_modelo,
+    obter_temperatura,
+    obter_limite_tokens
+)
 
 
 def obter_cliente():
@@ -27,12 +31,16 @@ def consultar_gemini(texto):
 
     cliente = obter_cliente()
     modelo = obter_modelo()
+    temperatura = obter_temperatura()
+    limite_tokens = obter_limite_tokens()
 
     try:
         resposta = cliente.models.generate_content(
             model=modelo,
             contents=texto,
             config={
+                "temperature": temperatura,
+                "max_output_tokens": limite_tokens,
                 "http_options": {
                     "timeout": 30000
                 }
