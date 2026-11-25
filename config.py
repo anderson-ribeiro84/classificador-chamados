@@ -37,3 +37,51 @@ def obter_modelo():
         )
 
     return modelo
+
+
+def obter_temperatura():
+    """
+    Recupera e valida a temperatura de geração do Gemini.
+    """
+    temperatura = os.getenv(
+        "GEMINI_TEMPERATURE",
+        "0.2"
+    )
+
+    try:
+        temperatura = float(temperatura)
+    except ValueError:
+        raise ValueError(
+            "A temperatura do Gemini deve ser um número válido."
+        )
+
+    if not 0 <= temperatura <= 2:
+        raise ValueError(
+            "A temperatura deve estar entre 0 e 2."
+        )
+
+    return temperatura
+
+
+def obter_limite_tokens():
+    """
+    Recupera e valida o limite máximo de tokens da resposta.
+    """
+    limite = os.getenv(
+        "GEMINI_MAX_OUTPUT_TOKENS",
+        "1024"
+    )
+
+    try:
+        limite = int(limite)
+    except ValueError:
+        raise ValueError(
+            "O limite de tokens deve ser um número inteiro."
+        )
+
+    if limite <= 0:
+        raise ValueError(
+            "O limite de tokens deve ser maior que zero."
+        )
+
+    return limite
